@@ -80,10 +80,24 @@ class TransactionBase(BaseModel):
     transaction_date: datetime
 
 
-class TransactionCreate(TransactionBase):
+class TransactionCreateBase(BaseModel):
+    """Base schema for transaction creation without required total_amount."""
+
+    type: TransactionType
+    quantity: Decimal
+    price_per_share: Decimal
+    fees: Decimal = Decimal(0)
+    currency: str
+    exchange_rate: Decimal = Decimal(1)
+    notes: Optional[str] = None
+    transaction_date: datetime
+
+
+class TransactionCreate(TransactionCreateBase):
     """Transaction creation schema."""
 
     symbol: str  # For creating the holding if it doesn't exist
+    total_amount: Optional[Decimal] = None  # Auto-calculated if not provided
 
 
 class TransactionUpdate(BaseModel):

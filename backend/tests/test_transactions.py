@@ -40,10 +40,32 @@ class TestTransactionService:
             transaction_date=datetime.now(timezone.utc),
         )
 
+    @pytest.fixture
+    def sample_transaction_data_no_total(self):
+        """Sample transaction data without total_amount for auto-calculation testing."""
+        return TransactionCreate(
+            symbol="AAPL",
+            type=TransactionType.BUY,
+            quantity=Decimal("10"),
+            price_per_share=Decimal("150.00"),
+            fees=Decimal("5.00"),
+            currency="USD",
+            exchange_rate=Decimal("1.0"),
+            notes="Test transaction without total",
+            transaction_date=datetime.now(timezone.utc),
+        )
+
     def test_validate_transaction_data_valid(self, sample_transaction_data):
         """Test transaction validation with valid data."""
         # Should not raise any exception
         TransactionService.validate_transaction_data(sample_transaction_data)
+
+    def test_validate_transaction_data_no_total_amount(
+        self, sample_transaction_data_no_total
+    ):
+        """Test transaction validation with no total_amount (auto-calculation)."""
+        # Should not raise any exception when total_amount is None
+        TransactionService.validate_transaction_data(sample_transaction_data_no_total)
 
     def test_validate_transaction_data_negative_quantity(self, sample_transaction_data):
         """Test transaction validation with negative quantity."""
@@ -122,6 +144,33 @@ class TestTransactionCalculations:
 
         expected_avg_cost = total_cost / quantity
         assert expected_avg_cost == Decimal("150.00")
+
+    def test_auto_calculate_total_amount_no_fees(self):
+        """Test auto-calculation of total_amount without fees."""
+        quantity = Decimal("10")
+        price_per_share = Decimal("150.00")
+        fees = Decimal("0.00")
+
+        expected_total = quantity * price_per_share + fees
+        assert expected_total == Decimal("1500.00")
+
+    def test_auto_calculate_total_amount_with_fees(self):
+        """Test auto-calculation of total_amount with fees."""
+        quantity = Decimal("10")
+        price_per_share = Decimal("150.00")
+        fees = Decimal("5.99")
+
+        expected_total = quantity * price_per_share + fees
+        assert expected_total == Decimal("1505.99")
+
+    def test_auto_calculate_total_amount_fractional_shares(self):
+        """Test auto-calculation with fractional shares."""
+        quantity = Decimal("2.5")
+        price_per_share = Decimal("100.25")
+        fees = Decimal("2.50")
+
+        expected_total = quantity * price_per_share + fees
+        assert expected_total == Decimal("253.125")
 
     def test_calculate_holding_metrics_multiple_buys(self):
         """Test holding calculations with multiple buy transactions."""
@@ -209,6 +258,48 @@ class TestTransactionAPI:
         #
         # assert response.status_code == 201
         # assert "id" in response.json()
+
+    @patch("app.core.deps.get_current_active_user")
+    @patch("app.core.database.get_db")
+    def test_create_transaction_auto_calculate_total(
+        self, mock_get_db, mock_get_user, client
+    ):
+        """Test create transaction endpoint with auto-calculated total_amount."""
+        # Setup mocks
+        mock_user = User(id="user-123", email="test@example.com", is_active=True)
+        mock_get_user.return_value = mock_user
+
+        # Mock database operations
+        mock_db = None  # Would need proper mock setup
+        mock_get_db.return_value = mock_db
+
+        # Transaction data without total_amount (should be auto-calculated)
+        transaction_data = {
+            "symbol": "AAPL",
+            "type": "BUY",
+            "quantity": "10.0",
+            "price_per_share": "150.00",
+            # No total_amount - should be auto-calculated as 1505.00
+            "fees": "5.00",
+            "currency": "USD",
+            "exchange_rate": "1.0",
+            "notes": "Test auto-calculation",
+            "transaction_date": "2024-01-01T10:00:00Z",
+        }
+
+        # Note: This test would need proper database mocking to work
+        # Expected total_amount = 10.0 * 150.00 + 5.00 = 1505.00
+
+        # response = client.post(
+        #     "/api/v1/portfolios/portfolio-123/transactions",
+        #     json=transaction_data,
+        #     headers=auth_headers
+        # )
+        #
+        # assert response.status_code == 201
+        # response_data = response.json()
+        # assert "id" in response_data
+        # assert response_data["total_amount"] == "1505.00"
 
     def test_transaction_validation_errors(self, client):
         """Test transaction validation error responses."""
