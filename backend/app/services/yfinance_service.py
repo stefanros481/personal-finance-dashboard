@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 import yfinance as yf
 from fastapi import HTTPException
 
+from app.services.cache_service import cache_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +20,7 @@ class YFinanceService:
 
     async def get_current_price(self, ticker: str) -> Dict[str, any]:
         """
-        Get current stock price for a ticker.
+        Get current stock price for a ticker with 15-minute caching.
         
         Args:
             ticker: Stock ticker symbol (e.g., 'AAPL', 'MSFT')
@@ -29,11 +31,20 @@ class YFinanceService:
         Raises:
             HTTPException: If ticker is invalid or data cannot be fetched
         """
+        ticker = ticker.upper()
+        cache_key = cache_service.generate_stock_price_key(ticker)
+        
+        # Try to get from cache first
+        cached_data = await cache_service.get(cache_key)
+        if cached_data is not None:
+            logger.info(f"Returning cached price data for ticker: {ticker}")
+            return cached_data
+        
         try:
-            logger.info(f"Fetching current price for ticker: {ticker}")
+            logger.info(f"Fetching fresh price data for ticker: {ticker}")
             
             # Create yfinance ticker object
-            stock = yf.Ticker(ticker.upper())
+            stock = yf.Ticker(ticker)
             
             # Get current data
             info = stock.info
@@ -65,8 +76,8 @@ class YFinanceService:
                 price_change_percent = (price_change / previous_close) * 100
             
             result = {
-                "ticker": ticker.upper(),
-                "name": info.get("longName", ticker.upper()),
+                "ticker": ticker,
+                "name": info.get("longName", ticker),
                 "current_price": current_price,
                 "previous_close": previous_close,
                 "price_change": price_change,
@@ -76,7 +87,10 @@ class YFinanceService:
                 "last_updated": datetime.now().isoformat()
             }
             
-            logger.info(f"Successfully fetched price for {ticker}: ${current_price}")
+            # Cache the result for 15 minutes
+            await cache_service.set(cache_key, result)
+            
+            logger.info(f"Successfully fetched and cached price for {ticker}: ${current_price}")
             return result
             
         except HTTPException:
@@ -91,7 +105,7 @@ class YFinanceService:
 
     async def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, str]]:
         """
-        Search for stocks by ticker or company name.
+        Search for stocks by ticker or company name with caching.
         
         Args:
             query: Search query (ticker or company name)
@@ -105,8 +119,16 @@ class YFinanceService:
             you might want to use a dedicated search API or maintain
             a local database of stock symbols.
         """
+        cache_key = cache_service.generate_stock_search_key(f"{query}_{limit}")
+        
+        # Try to get from cache first
+        cached_data = await cache_service.get(cache_key)
+        if cached_data is not None:
+            logger.info(f"Returning cached search results for query: {query}")
+            return cached_data
+        
         try:
-            logger.info(f"Searching stocks for query: {query}")
+            logger.info(f"Performing fresh search for query: {query}")
             
             # For now, implement a simple search by trying the query as a ticker
             # In production, you'd want to use a proper search API
@@ -117,17 +139,23 @@ class YFinanceService:
                 info = stock.info
                 
                 if info and 'symbol' in info:
-                    return [{
+                    result = [{
                         "ticker": ticker,
                         "name": info.get("longName", ticker),
                         "exchange": info.get("exchange", ""),
                         "currency": info.get("currency", "USD")
                     }]
+                    # Cache the successful result
+                    await cache_service.set(cache_key, result)
+                    return result
             except Exception:
                 pass
             
             # Return empty list if no matches found
-            return []
+            result = []
+            # Cache empty results for shorter time (5 minutes)
+            await cache_service.set(cache_key, result, ttl_seconds=300)
+            return result
             
         except Exception as e:
             logger.error(f"Error searching stocks for query {query}: {str(e)}")
@@ -140,7 +168,7 @@ class YFinanceService:
         interval: str = "1d"
     ) -> Dict[str, any]:
         """
-        Get historical stock data.
+        Get historical stock data with caching.
         
         Args:
             ticker: Stock ticker symbol
@@ -153,8 +181,17 @@ class YFinanceService:
         Raises:
             HTTPException: If ticker is invalid or data cannot be fetched
         """
+        ticker = ticker.upper()
+        cache_key = cache_service.generate_stock_history_key(ticker, period, interval)
+        
+        # Try to get from cache first
+        cached_data = await cache_service.get(cache_key)
+        if cached_data is not None:
+            logger.info(f"Returning cached historical data for {ticker} ({period}, {interval})")
+            return cached_data
+        
         try:
-            logger.info(f"Fetching historical data for {ticker} (period: {period}, interval: {interval})")
+            logger.info(f"Fetching fresh historical data for {ticker} (period: {period}, interval: {interval})")
             
             stock = yf.Ticker(ticker.upper())
             
@@ -179,13 +216,19 @@ class YFinanceService:
                     "volume": int(row["Volume"]) if row["Volume"] == row["Volume"] else 0  # NaN check
                 })
             
-            return {
-                "ticker": ticker.upper(),
+            result = {
+                "ticker": ticker,
                 "period": period,
                 "interval": interval,
                 "data": historical_data,
                 "last_updated": datetime.now().isoformat()
             }
+            
+            # Cache historical data for longer period (60 minutes) since it changes less frequently
+            await cache_service.set(cache_key, result, ttl_seconds=3600)
+            
+            logger.info(f"Successfully fetched and cached historical data for {ticker}")
+            return result
             
         except HTTPException:
             raise
