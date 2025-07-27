@@ -14,12 +14,9 @@ from app.schemas.portfolio import (
     PortfolioCreate,
     PortfolioUpdate,
     PortfolioWithHoldings,
-    Transaction,
-    TransactionCreate,
 )
 from app.services.portfolio import (
     create_portfolio,
-    create_transaction,
     delete_portfolio,
     get_holdings,
     get_portfolio,
@@ -111,23 +108,3 @@ async def read_portfolio_holdings(
     """Get all holdings for a portfolio."""
     holdings = get_holdings(db, portfolio_id, current_user.id)
     return holdings
-
-
-@router.post(
-    "/{portfolio_id}/transactions",
-    response_model=Transaction,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_portfolio_transaction(
-    portfolio_id: str,
-    transaction: TransactionCreate,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    """Create a new transaction for a portfolio."""
-    db_transaction = create_transaction(db, transaction, portfolio_id, current_user.id)
-    if not db_transaction:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
-        )
-    return db_transaction
