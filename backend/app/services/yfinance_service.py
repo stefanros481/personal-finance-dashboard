@@ -105,19 +105,14 @@ class YFinanceService:
 
     async def search_stocks(self, query: str, limit: int = 10) -> List[Dict[str, str]]:
         """
-        Search for stocks by ticker or company name with caching.
+        Search for stocks by ticker or company name with advanced search capabilities.
         
         Args:
             query: Search query (ticker or company name)
             limit: Maximum number of results to return
             
         Returns:
-            List of stock matches
-            
-        Note:
-            This is a placeholder implementation. In a production system,
-            you might want to use a dedicated search API or maintain
-            a local database of stock symbols.
+            List of stock matches with comprehensive search coverage
         """
         cache_key = cache_service.generate_stock_search_key(f"{query}_{limit}")
         
@@ -128,34 +123,114 @@ class YFinanceService:
             return cached_data
         
         try:
-            logger.info(f"Performing fresh search for query: {query}")
+            logger.info(f"Performing comprehensive search for query: {query}")
+            results = []
             
-            # For now, implement a simple search by trying the query as a ticker
-            # In production, you'd want to use a proper search API
-            ticker = query.upper()
+            # Strategy 1: Try exact ticker match first (for queries like 'AAPL', 'MSFT')
+            if len(query) <= 5 and query.isalpha():
+                try:
+                    ticker = query.upper()
+                    stock = yf.Ticker(ticker)
+                    info = stock.info
+                    
+                    if info and 'symbol' in info and info.get('symbol') == ticker:
+                        results.append({
+                            "ticker": ticker,
+                            "name": info.get("longName", info.get("shortName", ticker)),
+                            "exchange": info.get("exchange", ""),
+                            "currency": info.get("currency", "USD")
+                        })
+                        logger.info(f"Found exact ticker match: {ticker}")
+                except Exception as e:
+                    logger.debug(f"No exact ticker match for {query}: {str(e)}")
             
+            # Strategy 2: Use yfinance Search for company name or partial matches
             try:
-                stock = yf.Ticker(ticker)
-                info = stock.info
+                search_obj = yf.Search(query)
+                search_quotes = search_obj.quotes
                 
-                if info and 'symbol' in info:
-                    result = [{
-                        "ticker": ticker,
-                        "name": info.get("longName", ticker),
-                        "exchange": info.get("exchange", ""),
-                        "currency": info.get("currency", "USD")
-                    }]
-                    # Cache the successful result
-                    await cache_service.set(cache_key, result)
-                    return result
-            except Exception:
-                pass
+                if search_quotes:
+                    logger.info(f"Found {len(search_quotes)} search results for: {query}")
+                    
+                    # Process search results
+                    for quote in search_quotes[:limit]:
+                        # Skip if we already have this ticker from exact match
+                        ticker = quote.get('symbol', '')
+                        if any(r['ticker'] == ticker for r in results):
+                            continue
+                            
+                        # Filter for equity stocks primarily (can be expanded)
+                        quote_type = quote.get('quoteType', '').upper()
+                        if quote_type in ['EQUITY', 'ETF']:
+                            result_item = {
+                                "ticker": ticker,
+                                "name": quote.get('longname', quote.get('shortname', ticker)),
+                                "exchange": quote.get('exchDisp', quote.get('exchange', '')),
+                                "currency": "USD"  # Default, could be enhanced
+                            }
+                            results.append(result_item)
+                            
+                            if len(results) >= limit:
+                                break
+                
+            except Exception as e:
+                logger.warning(f"yfinance Search failed for query '{query}': {str(e)}")
             
-            # Return empty list if no matches found
-            result = []
-            # Cache empty results for shorter time (5 minutes)
-            await cache_service.set(cache_key, result, ttl_seconds=300)
-            return result
+            # Strategy 3: For partial company name matching, try common patterns
+            # (Run if we have no good results yet, regardless of filtered results from Strategy 2)
+            if len(results) == 0 and len(query) > 2:
+                common_expansions = {
+                    'micro': 'Microsoft',
+                    'apple': 'Apple',
+                    'tesla': 'Tesla',
+                    'amazon': 'Amazon',
+                    'google': 'Alphabet',
+                    'meta': 'Meta',
+                    'netflix': 'Netflix'
+                }
+                
+                expanded_query = common_expansions.get(query.lower())
+                if expanded_query and expanded_query.lower() != query.lower():
+                    try:
+                        logger.info(f"Trying expanded search: {query} -> {expanded_query}")
+                        search_obj = yf.Search(expanded_query)
+                        search_quotes = search_obj.quotes
+                        
+                        for quote in search_quotes[:limit]:
+                            quote_type = quote.get('quoteType', '').upper()
+                            if quote_type in ['EQUITY', 'ETF']:
+                                ticker = quote.get('symbol', '')
+                                result_item = {
+                                    "ticker": ticker,
+                                    "name": quote.get('longname', quote.get('shortname', ticker)),
+                                    "exchange": quote.get('exchDisp', quote.get('exchange', '')),
+                                    "currency": "USD"
+                                }
+                                results.append(result_item)
+                                
+                                if len(results) >= limit:
+                                    break
+                                    
+                    except Exception as e:
+                        logger.debug(f"Expanded search failed for {expanded_query}: {str(e)}")
+            
+            # Remove duplicates and limit results
+            seen_tickers = set()
+            unique_results = []
+            for result in results:
+                ticker = result['ticker']
+                if ticker not in seen_tickers:
+                    seen_tickers.add(ticker)
+                    unique_results.append(result)
+                    if len(unique_results) >= limit:
+                        break
+            
+            # Cache the results
+            cache_duration = 900 if unique_results else 300  # 15 min for results, 5 min for empty
+            await cache_service.set(cache_key, unique_results, ttl_seconds=cache_duration)
+            
+            logger.info(f"Search for '{query}' returned {len(unique_results)} results")
+            return unique_results
             
         except Exception as e:
             logger.error(f"Error searching stocks for query {query}: {str(e)}")
