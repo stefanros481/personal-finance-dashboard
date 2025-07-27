@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  # Development override for backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: postgresql://finance_user:finance_password@db:5432/finance_dashboard
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-not-for-production
+      DEBUG: "True"
+      BACKEND_CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173"]'
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
