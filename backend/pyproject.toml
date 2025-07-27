@@ -23,6 +23,7 @@ dependencies = [
     "httpx>=0.26.0",
     "yfinance>=0.2.38",
     "pandas>=2.2.0",
+    "email-validator>=2.2.0",
 ]
 
 [project.optional-dependencies]
@@ -65,3 +66,14 @@ pythonpath = ["."]
 where = ["."]
 include = ["app*"]
 exclude = ["tests*", "alembic*"]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "flake8>=7.3.0",
+    "isort>=6.0.1",
+    "mypy>=1.17.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+]

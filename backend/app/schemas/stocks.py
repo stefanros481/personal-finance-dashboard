@@ -1,17 +1,24 @@
 """Stock-related Pydantic schemas."""
-from typing import List, Optional
+
 from datetime import datetime
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class StockPrice(BaseModel):
     """Schema for current stock price information."""
+
     ticker: str = Field(..., description="Stock ticker symbol")
     name: str = Field(..., description="Company name")
     current_price: float = Field(..., description="Current stock price")
     previous_close: Optional[float] = Field(None, description="Previous closing price")
-    price_change: Optional[float] = Field(None, description="Price change from previous close")
-    price_change_percent: Optional[float] = Field(None, description="Price change percentage")
+    price_change: Optional[float] = Field(
+        None, description="Price change from previous close"
+    )
+    price_change_percent: Optional[float] = Field(
+        None, description="Price change percentage"
+    )
     currency: str = Field("USD", description="Currency of the price")
     market_state: str = Field("UNKNOWN", description="Current market state")
     last_updated: str = Field(..., description="Last update timestamp")
@@ -28,13 +35,14 @@ class StockPrice(BaseModel):
                 "price_change_percent": 0.43,
                 "currency": "USD",
                 "market_state": "REGULAR",
-                "last_updated": "2024-01-15T10:30:00"
+                "last_updated": "2024-01-15T10:30:00",
             }
         }
 
 
 class StockSearch(BaseModel):
     """Schema for stock search results."""
+
     ticker: str = Field(..., description="Stock ticker symbol")
     name: str = Field(..., description="Company name")
     exchange: str = Field("", description="Stock exchange")
@@ -47,13 +55,14 @@ class StockSearch(BaseModel):
                 "ticker": "AAPL",
                 "name": "Apple Inc.",
                 "exchange": "NASDAQ",
-                "currency": "USD"
+                "currency": "USD",
             }
         }
 
 
 class HistoricalDataPoint(BaseModel):
     """Schema for a single historical data point."""
+
     date: str = Field(..., description="Date in YYYY-MM-DD format")
     open: float = Field(..., description="Opening price")
     high: float = Field(..., description="Highest price")
@@ -67,6 +76,7 @@ class HistoricalDataPoint(BaseModel):
 
 class HistoricalData(BaseModel):
     """Schema for historical stock data."""
+
     ticker: str = Field(..., description="Stock ticker symbol")
     period: str = Field(..., description="Time period")
     interval: str = Field(..., description="Data interval")
@@ -87,9 +97,9 @@ class HistoricalData(BaseModel):
                         "high": 175.50,
                         "low": 173.80,
                         "close": 175.25,
-                        "volume": 45123456
+                        "volume": 45123456,
                     }
                 ],
-                "last_updated": "2024-01-15T10:30:00"
+                "last_updated": "2024-01-15T10:30:00",
             }
         }

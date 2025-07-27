@@ -1,4 +1,5 @@
 """Pension-related models."""
+
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Text
@@ -23,7 +24,9 @@ class PensionAccount(Base):
 
     # Relationships
     user = relationship("User", back_populates="pension_accounts")
-    value_entries = relationship("PensionValueEntry", back_populates="account", cascade="all, delete-orphan")
+    value_entries = relationship(
+        "PensionValueEntry", back_populates="account", cascade="all, delete-orphan"
+    )
 
 
 class PensionValueEntry(Base):

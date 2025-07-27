@@ -1,4 +1,5 @@
 """Portfolio schemas."""
+
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
@@ -10,6 +11,7 @@ from app.models.portfolio import TransactionType
 
 class PortfolioBase(BaseModel):
     """Base portfolio schema."""
+
     name: str
     description: Optional[str] = None
     currency: str = "USD"
@@ -17,11 +19,13 @@ class PortfolioBase(BaseModel):
 
 class PortfolioCreate(PortfolioBase):
     """Portfolio creation schema."""
+
     pass
 
 
 class PortfolioUpdate(BaseModel):
     """Portfolio update schema."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     currency: Optional[str] = None
@@ -30,6 +34,7 @@ class PortfolioUpdate(BaseModel):
 
 class Portfolio(PortfolioBase):
     """Portfolio schema for API responses."""
+
     id: str
     user_id: str
     order: int
@@ -42,12 +47,14 @@ class Portfolio(PortfolioBase):
 
 class HoldingBase(BaseModel):
     """Base holding schema."""
+
     symbol: str
     name: Optional[str] = None
 
 
 class Holding(HoldingBase):
     """Holding schema for API responses."""
+
     id: str
     portfolio_id: str
     current_quantity: Decimal
@@ -61,6 +68,7 @@ class Holding(HoldingBase):
 
 class TransactionBase(BaseModel):
     """Base transaction schema."""
+
     type: TransactionType
     quantity: Decimal
     price_per_share: Decimal
@@ -74,11 +82,13 @@ class TransactionBase(BaseModel):
 
 class TransactionCreate(TransactionBase):
     """Transaction creation schema."""
+
     symbol: str  # For creating the holding if it doesn't exist
 
 
 class TransactionUpdate(BaseModel):
     """Transaction update schema."""
+
     type: Optional[TransactionType] = None
     quantity: Optional[Decimal] = None
     price_per_share: Optional[Decimal] = None
@@ -92,6 +102,7 @@ class TransactionUpdate(BaseModel):
 
 class Transaction(TransactionBase):
     """Transaction schema for API responses."""
+
     id: str
     holding_id: str
     average_cost_per_share_at_transaction: Optional[Decimal]
@@ -104,9 +115,11 @@ class Transaction(TransactionBase):
 
 class PortfolioWithHoldings(Portfolio):
     """Portfolio with holdings included."""
+
     holdings: List[Holding] = []
 
 
 class HoldingWithTransactions(Holding):
     """Holding with transactions included."""
+
     transactions: List[Transaction] = []

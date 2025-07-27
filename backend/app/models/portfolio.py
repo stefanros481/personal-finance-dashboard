@@ -1,4 +1,5 @@
 """Portfolio, Holding, and Transaction models."""
+
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -6,7 +7,9 @@ from enum import Enum
 from sqlalchemy import (
     Column,
     DateTime,
-    Enum as SQLEnum,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
@@ -20,6 +23,7 @@ from app.core.database import Base
 
 class TransactionType(str, Enum):
     """Transaction type enum."""
+
     BUY = "BUY"
     SELL = "SELL"
     DIVIDEND = "DIVIDEND"
@@ -44,7 +48,9 @@ class Portfolio(Base):
 
     # Relationships
     user = relationship("User", back_populates="portfolios")
-    holdings = relationship("Holding", back_populates="portfolio", cascade="all, delete-orphan")
+    holdings = relationship(
+        "Holding", back_populates="portfolio", cascade="all, delete-orphan"
+    )
 
 
 class Holding(Base):
@@ -63,7 +69,9 @@ class Holding(Base):
 
     # Relationships
     portfolio = relationship("Portfolio", back_populates="holdings")
-    transactions = relationship("Transaction", back_populates="holding", cascade="all, delete-orphan")
+    transactions = relationship(
+        "Transaction", back_populates="holding", cascade="all, delete-orphan"
+    )
 
 
 class Transaction(Base):

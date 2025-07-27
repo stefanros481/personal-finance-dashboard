@@ -1,4 +1,5 @@
 """Settings endpoints."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,8 +23,7 @@ async def read_user_settings(
     settings = get_user_settings(db, current_user.id)
     if not settings:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Settings not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Settings not found"
         )
     return settings
 
@@ -38,7 +38,6 @@ async def update_current_user_settings(
     settings = update_user_settings(db, current_user.id, settings_update)
     if not settings:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Settings not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Settings not found"
         )
     return settings

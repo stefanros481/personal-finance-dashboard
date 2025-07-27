@@ -1,7 +1,8 @@
 """User settings model."""
+
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, JSON, String
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -16,7 +17,9 @@ class UserSettings(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
     base_currency = Column(String(3), nullable=False, default="USD")
     additional_currencies = Column(JSON, default=list)  # List of currency codes
-    retirement_goal = Column(JSON, default=dict)  # {"target_amount": 0, "target_date": null}
+    retirement_goal = Column(
+        JSON, default=dict
+    )  # {"target_amount": 0, "target_date": null}
     ynab_budget_id = Column(String)
     theme = Column(String, default="light")  # light or dark
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -1,4 +1,5 @@
 """User model."""
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, String
@@ -21,6 +22,15 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    portfolios = relationship("Portfolio", back_populates="user", cascade="all, delete-orphan")
-    pension_accounts = relationship("PensionAccount", back_populates="user", cascade="all, delete-orphan")
-    settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    portfolios = relationship(
+        "Portfolio", back_populates="user", cascade="all, delete-orphan"
+    )
+    pension_accounts = relationship(
+        "PensionAccount", back_populates="user", cascade="all, delete-orphan"
+    )
+    settings = relationship(
+        "UserSettings",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )

@@ -1,4 +1,5 @@
 """Market data models."""
+
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Numeric, String, Text, UniqueConstraint
@@ -46,7 +47,11 @@ class HistoricalExchangeRate(Base):
     """Historical exchange rate model."""
 
     __tablename__ = "historical_exchange_rates"
-    __table_args__ = (UniqueConstraint("from_currency", "to_currency", "date", name="uq_currency_pair_date"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "from_currency", "to_currency", "date", name="uq_currency_pair_date"
+        ),
+    )
 
     id = Column(String, primary_key=True, index=True)
     from_currency = Column(String(3), nullable=False, index=True)

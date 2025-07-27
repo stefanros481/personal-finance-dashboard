@@ -1,4 +1,5 @@
 """Portfolio endpoints."""
+
 from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,22 +9,22 @@ from app.core.database import get_db
 from app.core.deps import get_current_active_user
 from app.models.user import User
 from app.schemas.portfolio import (
+    Holding,
     Portfolio,
     PortfolioCreate,
     PortfolioUpdate,
     PortfolioWithHoldings,
-    Holding,
     Transaction,
     TransactionCreate,
 )
 from app.services.portfolio import (
     create_portfolio,
-    get_portfolios,
-    get_portfolio,
-    update_portfolio,
+    create_transaction,
     delete_portfolio,
     get_holdings,
-    create_transaction,
+    get_portfolio,
+    get_portfolios,
+    update_portfolio,
 )
 
 router = APIRouter()
@@ -58,17 +59,16 @@ async def read_portfolio(
     portfolio = get_portfolio(db, portfolio_id, current_user.id)
     if not portfolio:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
-    
+
     # Get holdings for this portfolio
     holdings = get_holdings(db, portfolio_id, current_user.id)
-    
+
     # Convert to response model
     portfolio_dict = portfolio.__dict__.copy()
-    portfolio_dict['holdings'] = holdings
-    
+    portfolio_dict["holdings"] = holdings
+
     return PortfolioWithHoldings(**portfolio_dict)
 
 
@@ -83,8 +83,7 @@ async def update_user_portfolio(
     portfolio = update_portfolio(db, portfolio_id, current_user.id, portfolio_update)
     if not portfolio:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
     return portfolio
 
@@ -99,8 +98,7 @@ async def delete_user_portfolio(
     success = delete_portfolio(db, portfolio_id, current_user.id)
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
 
 
@@ -115,7 +113,11 @@ async def read_portfolio_holdings(
     return holdings
 
 
-@router.post("/{portfolio_id}/transactions", response_model=Transaction, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{portfolio_id}/transactions",
+    response_model=Transaction,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_portfolio_transaction(
     portfolio_id: str,
     transaction: TransactionCreate,
@@ -126,7 +128,6 @@ async def create_portfolio_transaction(
     db_transaction = create_transaction(db, transaction, portfolio_id, current_user.id)
     if not db_transaction:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
         )
     return db_transaction
