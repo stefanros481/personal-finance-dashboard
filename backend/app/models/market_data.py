@@ -1,7 +1,7 @@
 """Market data models."""
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Decimal as SQLDecimal, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -33,12 +33,12 @@ class HistoricalStockPrice(Base):
     id = Column(String, primary_key=True, index=True)
     symbol = Column(String, nullable=False, index=True)
     date = Column(DateTime, nullable=False, index=True)
-    open = Column(SQLDecimal(20, 8))
-    high = Column(SQLDecimal(20, 8))
-    low = Column(SQLDecimal(20, 8))
-    close = Column(SQLDecimal(20, 8), nullable=False)
-    adjusted_close = Column(SQLDecimal(20, 8))
-    volume = Column(SQLDecimal(20, 0))
+    open = Column(Numeric(20, 8))
+    high = Column(Numeric(20, 8))
+    low = Column(Numeric(20, 8))
+    close = Column(Numeric(20, 8), nullable=False)
+    adjusted_close = Column(Numeric(20, 8))
+    volume = Column(Numeric(20, 0))
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -52,5 +52,5 @@ class HistoricalExchangeRate(Base):
     from_currency = Column(String(3), nullable=False, index=True)
     to_currency = Column(String(3), nullable=False, index=True)
     date = Column(DateTime, nullable=False, index=True)
-    rate = Column(SQLDecimal(20, 8), nullable=False)
+    rate = Column(Numeric(20, 8), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

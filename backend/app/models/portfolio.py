@@ -6,10 +6,10 @@ from enum import Enum
 from sqlalchemy import (
     Column,
     DateTime,
-    Decimal as SQLDecimal,
     Enum as SQLEnum,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
 )
@@ -56,8 +56,8 @@ class Holding(Base):
     portfolio_id = Column(String, ForeignKey("portfolios.id"), nullable=False)
     symbol = Column(String, nullable=False, index=True)
     name = Column(String)
-    current_quantity = Column(SQLDecimal(20, 8), nullable=False, default=0)
-    average_cost_per_share = Column(SQLDecimal(20, 8), nullable=False, default=0)
+    current_quantity = Column(Numeric(20, 8), nullable=False, default=0)
+    average_cost_per_share = Column(Numeric(20, 8), nullable=False, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -74,13 +74,13 @@ class Transaction(Base):
     id = Column(String, primary_key=True, index=True)
     holding_id = Column(String, ForeignKey("holdings.id"), nullable=False)
     type = Column(SQLEnum(TransactionType), nullable=False)
-    quantity = Column(SQLDecimal(20, 8), nullable=False)
-    price_per_share = Column(SQLDecimal(20, 8), nullable=False)
-    total_amount = Column(SQLDecimal(20, 8), nullable=False)
-    fees = Column(SQLDecimal(20, 8), default=0)
+    quantity = Column(Numeric(20, 8), nullable=False)
+    price_per_share = Column(Numeric(20, 8), nullable=False)
+    total_amount = Column(Numeric(20, 8), nullable=False)
+    fees = Column(Numeric(20, 8), default=0)
     currency = Column(String(3), nullable=False)
-    exchange_rate = Column(SQLDecimal(20, 8), default=1)  # To portfolio currency
-    average_cost_per_share_at_transaction = Column(SQLDecimal(20, 8))
+    exchange_rate = Column(Numeric(20, 8), default=1)  # To portfolio currency
+    average_cost_per_share_at_transaction = Column(Numeric(20, 8))
     notes = Column(Text)
     transaction_date = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

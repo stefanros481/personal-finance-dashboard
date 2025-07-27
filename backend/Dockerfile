@@ -23,6 +23,7 @@ COPY pyproject.toml ./
 COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
+COPY scripts/ ./scripts/
 
 # Install dependencies
 RUN uv pip install --system --no-cache -e .

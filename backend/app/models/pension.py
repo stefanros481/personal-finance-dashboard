@@ -1,7 +1,7 @@
 """Pension-related models."""
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Decimal as SQLDecimal, ForeignKey, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -33,8 +33,8 @@ class PensionValueEntry(Base):
 
     id = Column(String, primary_key=True, index=True)
     account_id = Column(String, ForeignKey("pension_accounts.id"), nullable=False)
-    value = Column(SQLDecimal(20, 2), nullable=False)
-    contributions = Column(SQLDecimal(20, 2), default=0)
+    value = Column(Numeric(20, 2), nullable=False)
+    contributions = Column(Numeric(20, 2), default=0)
     entry_date = Column(DateTime, nullable=False)
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)

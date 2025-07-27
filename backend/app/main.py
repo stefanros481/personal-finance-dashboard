@@ -23,7 +23,7 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 # Include API router
-app.include_router(api_router, prefix=settings.API_PREFIX)
+app.include_router(api_router, prefix=f"{settings.API_PREFIX}/{settings.API_VERSION}")
 
 
 @app.get("/health")
