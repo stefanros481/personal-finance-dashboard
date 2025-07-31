@@ -84,7 +84,6 @@ class Transaction(Base):
     type = Column(SQLEnum(TransactionType), nullable=False)
     quantity = Column(Numeric(20, 8), nullable=False)
     price_per_share = Column(Numeric(20, 8), nullable=False)
-    total_amount = Column(Numeric(20, 8), nullable=False)
     fees = Column(Numeric(20, 8), default=0)
     exchange_rate = Column(Numeric(20, 8), default=1)  # To portfolio currency
     average_cost_per_share_at_transaction = Column(Numeric(20, 8))
@@ -95,3 +94,9 @@ class Transaction(Base):
 
     # Relationships
     holding = relationship("Holding", back_populates="transactions")
+
+    @property
+    def total_amount(self):
+        """Calculate total amount from quantity, price_per_share, and fees."""
+        from decimal import Decimal
+        return (self.quantity * self.price_per_share) + (self.fees / self.exchange_rate)

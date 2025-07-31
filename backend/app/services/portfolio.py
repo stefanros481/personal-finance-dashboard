@@ -157,7 +157,6 @@ def create_transaction(
         type=transaction.type,
         quantity=transaction.quantity,
         price_per_share=transaction.price_per_share,
-        total_amount=transaction.total_amount,
         fees=transaction.fees,
         currency=transaction.currency,
         exchange_rate=transaction.exchange_rate,

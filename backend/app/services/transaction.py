@@ -34,16 +34,6 @@ class TransactionService:
                 detail="Price per share must be positive",
             )
 
-        # Validate total amount consistency if provided
-        if transaction_data.total_amount is not None:
-            expected_total = (
-                transaction_data.quantity * transaction_data.price_per_share
-            ) + (transaction_data.fees / transaction_data.exchange_rate)
-            if abs(expected_total - transaction_data.total_amount) > Decimal("0.01"):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Total amount {transaction_data.total_amount} doesn't match calculated value {expected_total}",
-                )
 
         # Validate transaction date (not in future)
         if transaction_data.transaction_date > datetime.now(timezone.utc):
@@ -167,13 +157,6 @@ class TransactionService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
             )
 
-        # Calculate total_amount if not provided
-        if transaction_data.total_amount is None:
-            calculated_total = (
-                transaction_data.quantity * transaction_data.price_per_share
-            ) + (transaction_data.fees / transaction_data.exchange_rate)
-            transaction_data.total_amount = calculated_total
-
         # Validate transaction data
         TransactionService.validate_transaction_data(transaction_data)
 
@@ -192,7 +175,6 @@ class TransactionService:
             type=transaction_data.type,
             quantity=transaction_data.quantity,
             price_per_share=transaction_data.price_per_share,
-            total_amount=transaction_data.total_amount,
             fees=transaction_data.fees,
             exchange_rate=transaction_data.exchange_rate,
             average_cost_per_share_at_transaction=avg_cost_at_transaction,
@@ -241,20 +223,12 @@ class TransactionService:
             type=update_data.type or transaction.type,
             quantity=update_data.quantity or transaction.quantity,
             price_per_share=update_data.price_per_share or transaction.price_per_share,
-            total_amount=update_data.total_amount,  # Use explicit value or None
             fees=update_data.fees if update_data.fees is not None else transaction.fees,
             exchange_rate=update_data.exchange_rate or transaction.exchange_rate,
             notes=update_data.notes,
             transaction_date=update_data.transaction_date
             or transaction.transaction_date,
         )
-
-        # Calculate total_amount if not provided in update
-        if original_data.total_amount is None:
-            calculated_total = (
-                original_data.quantity * original_data.price_per_share
-            ) + (original_data.fees / original_data.exchange_rate)
-            original_data.total_amount = calculated_total
 
         # Validate updated data
         TransactionService.validate_transaction_data(original_data)
@@ -263,10 +237,6 @@ class TransactionService:
         for field, value in update_data.model_dump(exclude_unset=True).items():
             if value is not None:
                 setattr(transaction, field, value)
-
-        # If total_amount wasn't explicitly provided in update, use calculated value
-        if update_data.total_amount is None:
-            transaction.total_amount = original_data.total_amount
 
         transaction.updated_at = datetime.now(timezone.utc)
 

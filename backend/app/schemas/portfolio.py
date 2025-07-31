@@ -72,7 +72,6 @@ class TransactionBase(BaseModel):
     type: TransactionType
     quantity: Decimal
     price_per_share: Decimal
-    total_amount: Decimal
     fees: Decimal = Decimal(0)
     exchange_rate: Decimal = Decimal(1)
     notes: Optional[str] = None
@@ -80,7 +79,7 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreateBase(BaseModel):
-    """Base schema for transaction creation without required total_amount."""
+    """Base schema for transaction creation."""
 
     type: TransactionType
     quantity: Decimal
@@ -95,7 +94,6 @@ class TransactionCreate(TransactionCreateBase):
     """Transaction creation schema."""
 
     symbol: str  # For creating the holding if it doesn't exist
-    total_amount: Optional[Decimal] = None  # Auto-calculated if not provided
 
 
 class TransactionUpdate(BaseModel):
@@ -104,7 +102,6 @@ class TransactionUpdate(BaseModel):
     type: Optional[TransactionType] = None
     quantity: Optional[Decimal] = None
     price_per_share: Optional[Decimal] = None
-    total_amount: Optional[Decimal] = None
     fees: Optional[Decimal] = None
     exchange_rate: Optional[Decimal] = None
     notes: Optional[str] = None
@@ -116,6 +113,7 @@ class Transaction(TransactionBase):
 
     id: str
     holding_id: str
+    total_amount: Decimal  # Computed property from the model
     average_cost_per_share_at_transaction: Optional[Decimal]
     created_at: datetime
     updated_at: datetime
