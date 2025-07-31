@@ -38,7 +38,7 @@ class TransactionService:
         if transaction_data.total_amount is not None:
             expected_total = (
                 transaction_data.quantity * transaction_data.price_per_share
-            ) + transaction_data.fees
+            ) + (transaction_data.fees / transaction_data.exchange_rate)
             if abs(expected_total - transaction_data.total_amount) > Decimal("0.01"):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -171,7 +171,7 @@ class TransactionService:
         if transaction_data.total_amount is None:
             calculated_total = (
                 transaction_data.quantity * transaction_data.price_per_share
-            ) + transaction_data.fees
+            ) + (transaction_data.fees / transaction_data.exchange_rate)
             transaction_data.total_amount = calculated_total
 
         # Validate transaction data
@@ -253,7 +253,7 @@ class TransactionService:
         if original_data.total_amount is None:
             calculated_total = (
                 original_data.quantity * original_data.price_per_share
-            ) + original_data.fees
+            ) + (original_data.fees / original_data.exchange_rate)
             original_data.total_amount = calculated_total
 
         # Validate updated data
@@ -346,6 +346,95 @@ class TransactionService:
         )
 
         return transactions
+
+    @staticmethod
+    def recalculate_holding_metrics(
+        db: Session, holding_id: str, user_id: str
+    ) -> Holding:
+        """Recalculate metrics for a specific holding."""
+        # Get holding with ownership verification
+        holding = (
+            db.query(Holding)
+            .join(Portfolio)
+            .filter(Holding.id == holding_id, Portfolio.user_id == user_id)
+            .first()
+        )
+
+        if not holding:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Holding not found"
+            )
+
+        # Recalculate metrics
+        TransactionService.calculate_holding_metrics(db, holding)
+        db.commit()
+        db.refresh(holding)
+
+        logger.info(f"Recalculated metrics for holding {holding_id}")
+        return holding
+
+    @staticmethod
+    def recalculate_portfolio_metrics(
+        db: Session, portfolio_id: str, user_id: str
+    ) -> List[Holding]:
+        """Recalculate metrics for all holdings in a portfolio."""
+        # Verify portfolio ownership
+        portfolio = (
+            db.query(Portfolio)
+            .filter(Portfolio.id == portfolio_id, Portfolio.user_id == user_id)
+            .first()
+        )
+
+        if not portfolio:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+            )
+
+        # Get all holdings in the portfolio
+        holdings = (
+            db.query(Holding)
+            .filter(Holding.portfolio_id == portfolio_id)
+            .all()
+        )
+
+        # Recalculate metrics for each holding
+        for holding in holdings:
+            TransactionService.calculate_holding_metrics(db, holding)
+
+        db.commit()
+
+        # Refresh all holdings
+        for holding in holdings:
+            db.refresh(holding)
+
+        logger.info(
+            f"Recalculated metrics for {len(holdings)} holdings in portfolio {portfolio_id}"
+        )
+        return holdings
+
+    @staticmethod
+    def recalculate_all_user_metrics(db: Session, user_id: str) -> int:
+        """Recalculate metrics for all holdings belonging to a user."""
+        # Get all holdings for the user
+        holdings = (
+            db.query(Holding)
+            .join(Portfolio)
+            .filter(Portfolio.user_id == user_id)
+            .all()
+        )
+
+        # Recalculate metrics for each holding
+        for holding in holdings:
+            TransactionService.calculate_holding_metrics(db, holding)
+
+        db.commit()
+
+        # Refresh all holdings
+        for holding in holdings:
+            db.refresh(holding)
+
+        logger.info(f"Recalculated metrics for {len(holdings)} holdings for user {user_id}")
+        return len(holdings)
 
 
 # Global service instance

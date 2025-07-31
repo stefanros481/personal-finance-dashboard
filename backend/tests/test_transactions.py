@@ -276,7 +276,7 @@ class TestTransactionAPI:
         }
 
         # Note: This test would need proper database mocking to work
-        # Expected total_amount = 10.0 * 150.00 + 5.00 = 1505.00
+        # Expected total_amount = 10.0 * 150.00 + (5.00 / 1.0) = 1505.00
 
         # response = client.post(
         #     "/api/v1/portfolios/portfolio-123/transactions",
@@ -306,8 +306,25 @@ class TestTransactionAPI:
         # response = client.post(
         #     "/api/v1/portfolios/portfolio-123/transactions",
         #     json=invalid_data
-        # )
-        # assert response.status_code == 400
+
+    def test_transaction_calculation_with_exchange_rate(self, sample_transaction_data):
+        """Test that total_amount calculation uses correct exchange rate formula."""
+        # Test with EUR transaction (exchange rate 0.85 EUR to USD)
+        sample_transaction_data.exchange_rate = Decimal("0.85")  # 1 EUR = 0.85 USD
+        sample_transaction_data.fees = Decimal("10.00")  # 10 EUR fees
+        sample_transaction_data.total_amount = None  # Force auto-calculation
+        
+        # Expected calculation: (10 * 150.00) + (10.00 / 0.85) = 1500 + 11.76 = 1511.76
+        expected_total = (
+            sample_transaction_data.quantity * sample_transaction_data.price_per_share
+        ) + (sample_transaction_data.fees / sample_transaction_data.exchange_rate)
+        
+        assert expected_total == Decimal("1511.76470588235294117647058824")
+        
+        # Test validation would pass with this calculation
+        sample_transaction_data.total_amount = expected_total
+        # This should not raise an exception
+        TransactionService.validate_transaction_data(sample_transaction_data)
 
 
 class TestTransactionIntegration:

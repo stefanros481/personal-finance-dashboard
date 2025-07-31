@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user
-from app.schemas.portfolio import Transaction, TransactionCreate, TransactionUpdate
+from app.schemas.portfolio import Holding, Transaction, TransactionCreate, TransactionUpdate
 from app.schemas.user import User
 from app.services.transaction import transaction_service
 
@@ -164,4 +164,89 @@ async def delete_transaction(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete transaction",
+        )
+
+
+@router.post("/holdings/{holding_id}/recalculate", response_model=Holding)
+async def recalculate_holding_metrics(
+    holding_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    """
+    Recalculate average cost and quantity metrics for a specific holding.
+    
+    This endpoint is useful when you need to fix metrics after correcting
+    transaction data or when metrics appear incorrect.
+    """
+    try:
+        holding = transaction_service.recalculate_holding_metrics(
+            db=db, holding_id=holding_id, user_id=current_user.id
+        )
+        logger.info(f"Recalculated metrics for holding {holding_id}")
+        return holding
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error recalculating holding metrics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to recalculate holding metrics",
+        )
+
+
+@router.post("/portfolios/{portfolio_id}/recalculate", response_model=List[Holding])
+async def recalculate_portfolio_metrics(
+    portfolio_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    """
+    Recalculate average cost and quantity metrics for all holdings in a portfolio.
+    
+    This endpoint recalculates metrics for all holdings within the specified
+    portfolio, ensuring all calculations are based on current transaction data.
+    """
+    try:
+        holdings = transaction_service.recalculate_portfolio_metrics(
+            db=db, portfolio_id=portfolio_id, user_id=current_user.id
+        )
+        logger.info(f"Recalculated metrics for portfolio {portfolio_id}")
+        return holdings
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error recalculating portfolio metrics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to recalculate portfolio metrics",
+        )
+
+
+@router.post("/recalculate-all")
+async def recalculate_all_user_metrics(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    """
+    Recalculate average cost and quantity metrics for all user holdings.
+    
+    This endpoint recalculates metrics for all holdings across all portfolios
+    belonging to the current user. Use this when you need to fix all metrics
+    after a system-wide calculation change.
+    """
+    try:
+        holdings_count = transaction_service.recalculate_all_user_metrics(
+            db=db, user_id=current_user.id
+        )
+        logger.info(f"Recalculated metrics for all user holdings")
+        return {
+            "message": f"Successfully recalculated metrics for {holdings_count} holdings",
+            "holdings_updated": holdings_count,
+        }
+    except Exception as e:
+        logger.error(f"Error recalculating all user metrics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to recalculate all user metrics",
         )
