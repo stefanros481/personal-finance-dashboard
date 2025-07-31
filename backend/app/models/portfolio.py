@@ -86,7 +86,6 @@ class Transaction(Base):
     price_per_share = Column(Numeric(20, 8), nullable=False)
     total_amount = Column(Numeric(20, 8), nullable=False)
     fees = Column(Numeric(20, 8), default=0)
-    currency = Column(String(3), nullable=False)
     exchange_rate = Column(Numeric(20, 8), default=1)  # To portfolio currency
     average_cost_per_share_at_transaction = Column(Numeric(20, 8))
     notes = Column(Text)

@@ -74,7 +74,6 @@ class TransactionBase(BaseModel):
     price_per_share: Decimal
     total_amount: Decimal
     fees: Decimal = Decimal(0)
-    currency: str
     exchange_rate: Decimal = Decimal(1)
     notes: Optional[str] = None
     transaction_date: datetime
@@ -87,7 +86,6 @@ class TransactionCreateBase(BaseModel):
     quantity: Decimal
     price_per_share: Decimal
     fees: Decimal = Decimal(0)
-    currency: str
     exchange_rate: Decimal = Decimal(1)
     notes: Optional[str] = None
     transaction_date: datetime
@@ -108,7 +106,6 @@ class TransactionUpdate(BaseModel):
     price_per_share: Optional[Decimal] = None
     total_amount: Optional[Decimal] = None
     fees: Optional[Decimal] = None
-    currency: Optional[str] = None
     exchange_rate: Optional[Decimal] = None
     notes: Optional[str] = None
     transaction_date: Optional[datetime] = None

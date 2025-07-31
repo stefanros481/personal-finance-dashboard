@@ -34,7 +34,6 @@ class TestTransactionService:
             price_per_share=Decimal("150.00"),
             total_amount=Decimal("1500.00"),
             fees=Decimal("0.00"),
-            currency="USD",
             exchange_rate=Decimal("1.0"),
             notes="Test transaction",
             transaction_date=datetime.now(timezone.utc),
@@ -49,7 +48,6 @@ class TestTransactionService:
             quantity=Decimal("10"),
             price_per_share=Decimal("150.00"),
             fees=Decimal("5.00"),
-            currency="USD",
             exchange_rate=Decimal("1.0"),
             notes="Test transaction without total",
             transaction_date=datetime.now(timezone.utc),
@@ -109,14 +107,6 @@ class TestTransactionService:
 
         assert "cannot be in the future" in str(exc_info.value)
 
-    def test_validate_transaction_data_invalid_currency(self, sample_transaction_data):
-        """Test transaction validation with invalid currency."""
-        sample_transaction_data.currency = "INVALID"
-
-        with pytest.raises(Exception) as exc_info:
-            TransactionService.validate_transaction_data(sample_transaction_data)
-
-        assert "3-letter code" in str(exc_info.value)
 
     def test_validate_transaction_data_negative_exchange_rate(
         self, sample_transaction_data
@@ -241,7 +231,6 @@ class TestTransactionAPI:
             "price_per_share": "150.00",
             "total_amount": "1500.00",
             "fees": "0.00",
-            "currency": "USD",
             "exchange_rate": "1.0",
             "notes": "Test transaction",
             "transaction_date": "2024-01-01T10:00:00Z",
@@ -281,7 +270,6 @@ class TestTransactionAPI:
             "price_per_share": "150.00",
             # No total_amount - should be auto-calculated as 1505.00
             "fees": "5.00",
-            "currency": "USD",
             "exchange_rate": "1.0",
             "notes": "Test auto-calculation",
             "transaction_date": "2024-01-01T10:00:00Z",
@@ -310,7 +298,6 @@ class TestTransactionAPI:
             "price_per_share": "150.00",
             "total_amount": "1500.00",
             "fees": "0.00",
-            "currency": "USD",
             "exchange_rate": "1.0",
             "transaction_date": "2024-01-01T10:00:00Z",
         }

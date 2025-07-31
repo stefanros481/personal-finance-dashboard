@@ -52,13 +52,6 @@ class TransactionService:
                 detail="Transaction date cannot be in the future",
             )
 
-        # Validate currency code format
-        if len(transaction_data.currency) != 3:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Currency must be a 3-letter code (e.g., USD, EUR)",
-            )
-
         # Validate exchange rate
         if transaction_data.exchange_rate <= 0:
             raise HTTPException(
@@ -201,7 +194,6 @@ class TransactionService:
             price_per_share=transaction_data.price_per_share,
             total_amount=transaction_data.total_amount,
             fees=transaction_data.fees,
-            currency=transaction_data.currency,
             exchange_rate=transaction_data.exchange_rate,
             average_cost_per_share_at_transaction=avg_cost_at_transaction,
             notes=transaction_data.notes,
@@ -251,7 +243,6 @@ class TransactionService:
             price_per_share=update_data.price_per_share or transaction.price_per_share,
             total_amount=update_data.total_amount,  # Use explicit value or None
             fees=update_data.fees if update_data.fees is not None else transaction.fees,
-            currency=update_data.currency or transaction.currency,
             exchange_rate=update_data.exchange_rate or transaction.exchange_rate,
             notes=update_data.notes,
             transaction_date=update_data.transaction_date
