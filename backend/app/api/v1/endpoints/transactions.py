@@ -167,62 +167,6 @@ async def delete_transaction(
         )
 
 
-@router.post("/portfolios/{portfolio_id}/holdings/{holding_id}/recalculate", response_model=Holding)
-async def recalculate_holding_metrics(
-    portfolio_id: str,
-    holding_id: str,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    """
-    Recalculate average cost and quantity metrics for a specific holding.
-    
-    This endpoint is useful when you need to fix metrics after correcting
-    transaction data or when metrics appear incorrect.
-    """
-    try:
-        holding = transaction_service.recalculate_holding_metrics(
-            db=db, holding_id=holding_id, user_id=current_user.id
-        )
-        logger.info(f"Recalculated metrics for holding {holding_id} in portfolio {portfolio_id}")
-        return holding
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error recalculating holding metrics: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to recalculate holding metrics",
-        )
-
-
-@router.post("/portfolios/{portfolio_id}/recalculate", response_model=List[Holding])
-async def recalculate_portfolio_metrics(
-    portfolio_id: str,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    """
-    Recalculate average cost and quantity metrics for all holdings in a portfolio.
-    
-    This endpoint recalculates metrics for all holdings within the specified
-    portfolio, ensuring all calculations are based on current transaction data.
-    """
-    try:
-        holdings = transaction_service.recalculate_portfolio_metrics(
-            db=db, portfolio_id=portfolio_id, user_id=current_user.id
-        )
-        logger.info(f"Recalculated metrics for portfolio {portfolio_id}")
-        return holdings
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error recalculating portfolio metrics: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to recalculate portfolio metrics",
-        )
-
 
 @router.post("/recalculate-all")
 async def recalculate_all_user_metrics(
