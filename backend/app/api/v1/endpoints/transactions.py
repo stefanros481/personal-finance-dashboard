@@ -167,8 +167,9 @@ async def delete_transaction(
         )
 
 
-@router.post("/holdings/{holding_id}/recalculate", response_model=Holding)
+@router.post("/portfolios/{portfolio_id}/holdings/{holding_id}/recalculate", response_model=Holding)
 async def recalculate_holding_metrics(
+    portfolio_id: str,
     holding_id: str,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -183,7 +184,7 @@ async def recalculate_holding_metrics(
         holding = transaction_service.recalculate_holding_metrics(
             db=db, holding_id=holding_id, user_id=current_user.id
         )
-        logger.info(f"Recalculated metrics for holding {holding_id}")
+        logger.info(f"Recalculated metrics for holding {holding_id} in portfolio {portfolio_id}")
         return holding
     except HTTPException:
         raise
