@@ -94,47 +94,85 @@ class TransactionService:
             .all()
         )
 
-        total_quantity = Decimal(0)
-        total_cost = Decimal(0)
+        # Calculate current quantity (all transaction types)
+        current_quantity = Decimal(0)
+        
+        # Calculate average cost (BUY transactions only)
+        total_buy_cost = Decimal(0)
+        total_buy_quantity = Decimal(0)
 
         for transaction in transactions:
-            if transaction.type == TransactionType.BUY:
+            # Calculate transaction cost in portfolio currency
+            transaction_cost = (transaction.quantity * transaction.price_per_share) + (transaction.fees / transaction.exchange_rate)
+            
+            if transaction.type in [TransactionType.BUY, TransactionType.TRANSFER_IN]:
                 # Add to position
-                total_cost += transaction.total_amount * transaction.exchange_rate
-                total_quantity += transaction.quantity
-            elif transaction.type == TransactionType.SELL:
-                # Reduce position (FIFO basis for cost calculation)
-                if total_quantity > 0:
-                    # Calculate current average cost
-                    current_avg_cost = (
-                        total_cost / total_quantity
-                        if total_quantity > 0
-                        else Decimal(0)
-                    )
+                current_quantity += transaction.quantity
+                # Add to cost basis (for average cost calculation)
+                total_buy_cost += transaction_cost
+                total_buy_quantity += transaction.quantity
+            elif transaction.type in [TransactionType.SELL, TransactionType.TRANSFER_OUT]:
+                # Reduce position
+                current_quantity -= transaction.quantity
+                # Don't modify cost basis - average cost based on BUY transactions only
+            # Note: DIVIDEND and SPLIT transactions don't affect quantity or cost basis
 
-                    # Reduce cost basis proportionally
-                    cost_reduction = current_avg_cost * transaction.quantity
-                    total_cost -= cost_reduction
-                    total_quantity -= transaction.quantity
+        # Ensure we don't have negative quantities
+        if current_quantity < 0:
+            logger.warning(
+                f"Negative quantity for holding {holding.symbol}: {current_quantity}"
+            )
+            current_quantity = Decimal(0)
 
-                    # Ensure we don't go negative
-                    if total_quantity < 0:
-                        logger.warning(
-                            f"Negative quantity for holding {holding.symbol}: {total_quantity}"
-                        )
-                        total_quantity = Decimal(0)
-                        total_cost = Decimal(0)
+        # Calculate average cost from BUY transactions only
+        average_cost_per_share = (
+            total_buy_cost / total_buy_quantity if total_buy_quantity > 0 else Decimal(0)
+        )
 
         # Update holding with calculated values
-        holding.current_quantity = total_quantity
-        holding.average_cost_per_share = (
-            total_cost / total_quantity if total_quantity > 0 else Decimal(0)
-        )
+        holding.current_quantity = current_quantity
+        holding.average_cost_per_share = average_cost_per_share
         holding.updated_at = datetime.now(timezone.utc)
 
         logger.info(
-            f"Updated holding {holding.symbol}: quantity={total_quantity}, "
-            f"avg_cost={holding.average_cost_per_share}"
+            f"Updated holding {holding.symbol}: quantity={current_quantity}, "
+            f"avg_cost={average_cost_per_share} (from {total_buy_quantity} buy shares costing {total_buy_cost})"
+        )
+
+    @staticmethod
+    def calculate_and_update_transaction_metrics(db: Session, holding: Holding) -> None:
+        """Update average_cost_per_share_at_transaction for all transactions in a holding."""
+        transactions = (
+            db.query(Transaction)
+            .filter(Transaction.holding_id == holding.id)
+            .order_by(Transaction.transaction_date, Transaction.created_at)
+            .all()
+        )
+
+        # Track running totals to calculate average cost before each transaction
+        running_buy_cost = Decimal(0)
+        running_buy_quantity = Decimal(0)
+
+        for transaction in transactions:
+            # Calculate average cost BEFORE this transaction
+            avg_cost_before = (
+                running_buy_cost / running_buy_quantity 
+                if running_buy_quantity > 0 
+                else Decimal(0)
+            )
+            
+            # Update the transaction's average_cost_per_share_at_transaction
+            transaction.average_cost_per_share_at_transaction = avg_cost_before
+            transaction.updated_at = datetime.now(timezone.utc)
+            
+            # Update running totals AFTER processing this transaction
+            if transaction.type in [TransactionType.BUY, TransactionType.TRANSFER_IN]:
+                transaction_cost = (transaction.quantity * transaction.price_per_share) + (transaction.fees / transaction.exchange_rate)
+                running_buy_cost += transaction_cost
+                running_buy_quantity += transaction.quantity
+
+        logger.info(
+            f"Updated average_cost_per_share_at_transaction for {len(transactions)} transactions in holding {holding.symbol}"
         )
 
     @staticmethod
@@ -321,7 +359,7 @@ class TransactionService:
     def recalculate_holding_metrics(
         db: Session, holding_id: str, user_id: str
     ) -> Holding:
-        """Recalculate metrics for a specific holding."""
+        """Recalculate metrics for a specific holding and update transaction fields."""
         # Get holding with ownership verification
         holding = (
             db.query(Holding)
@@ -335,8 +373,12 @@ class TransactionService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Holding not found"
             )
 
-        # Recalculate metrics
+        # Recalculate holding metrics
         TransactionService.calculate_holding_metrics(db, holding)
+        
+        # Update transaction average_cost_per_share_at_transaction fields
+        TransactionService.calculate_and_update_transaction_metrics(db, holding)
+        
         db.commit()
         db.refresh(holding)
 
@@ -347,7 +389,7 @@ class TransactionService:
     def recalculate_portfolio_metrics(
         db: Session, portfolio_id: str, user_id: str
     ) -> List[Holding]:
-        """Recalculate metrics for all holdings in a portfolio."""
+        """Recalculate metrics for all holdings in a portfolio and update transaction fields."""
         # Verify portfolio ownership
         portfolio = (
             db.query(Portfolio)
@@ -370,6 +412,7 @@ class TransactionService:
         # Recalculate metrics for each holding
         for holding in holdings:
             TransactionService.calculate_holding_metrics(db, holding)
+            TransactionService.calculate_and_update_transaction_metrics(db, holding)
 
         db.commit()
 
@@ -384,7 +427,7 @@ class TransactionService:
 
     @staticmethod
     def recalculate_all_user_metrics(db: Session, user_id: str) -> int:
-        """Recalculate metrics for all holdings belonging to a user."""
+        """Recalculate metrics for all holdings belonging to a user and update transaction fields."""
         # Get all holdings for the user
         holdings = (
             db.query(Holding)
@@ -396,6 +439,7 @@ class TransactionService:
         # Recalculate metrics for each holding
         for holding in holdings:
             TransactionService.calculate_holding_metrics(db, holding)
+            TransactionService.calculate_and_update_transaction_metrics(db, holding)
 
         db.commit()
 

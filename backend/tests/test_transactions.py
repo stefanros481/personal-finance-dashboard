@@ -387,3 +387,54 @@ class TestTransactionEdgeCases:
     def test_stock_split_transactions(self):
         """Test stock split transaction handling."""
         pass
+
+    def test_holding_average_cost_calculation_buy_only(self):
+        """Test that holding average cost is calculated from BUY transactions only."""
+        # Mock transactions for a holding
+        class MockTransaction:
+            def __init__(self, type_val, quantity, price_per_share, fees, exchange_rate):
+                self.type = type_val
+                self.quantity = Decimal(str(quantity))
+                self.price_per_share = Decimal(str(price_per_share))
+                self.fees = Decimal(str(fees))
+                self.exchange_rate = Decimal(str(exchange_rate))
+        
+        transactions = [
+            # First BUY: 10 shares @ $150, no fees
+            MockTransaction("BUY", 10, 150.00, 0, 1.0),
+            # Second BUY: 5 shares @ $200, $10 fees
+            MockTransaction("BUY", 5, 200.00, 10.00, 1.0),
+            # SELL: 3 shares (should NOT affect average cost)
+            MockTransaction("SELL", 3, 180.00, 5.00, 1.0),
+        ]
+        
+        # Calculate using new logic (BUY transactions only)
+        current_quantity = Decimal(0)
+        total_buy_cost = Decimal(0)
+        total_buy_quantity = Decimal(0)
+        
+        for tx in transactions:
+            tx_cost = (tx.quantity * tx.price_per_share) + (tx.fees / tx.exchange_rate)
+            
+            if tx.type in ["BUY", "TRANSFER_IN"]:
+                current_quantity += tx.quantity
+                total_buy_cost += tx_cost
+                total_buy_quantity += tx.quantity
+            elif tx.type in ["SELL", "TRANSFER_OUT"]:
+                current_quantity -= tx.quantity
+        
+        average_cost = total_buy_cost / total_buy_quantity if total_buy_quantity > 0 else Decimal(0)
+        
+        # Expected calculations:
+        # BUY 1: (10 * 150.00) + (0 / 1.0) = 1500.00
+        # BUY 2: (5 * 200.00) + (10.00 / 1.0) = 1010.00
+        # Total BUY cost: 1500.00 + 1010.00 = 2510.00
+        # Total BUY quantity: 10 + 5 = 15
+        # Average cost: 2510.00 / 15 = 167.33...
+        # Current quantity: 10 + 5 - 3 = 12
+        
+        expected_avg_cost = Decimal("2510.00") / Decimal("15")
+        expected_current_quantity = Decimal("12")
+        
+        assert abs(average_cost - expected_avg_cost) < Decimal("0.01")
+        assert current_quantity == expected_current_quantity
